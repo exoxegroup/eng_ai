@@ -1,0 +1,5 @@
+{
+  "name": "Engineering AI Coach",
+  "description": "An AI-powered coach to help users refine and solve complex engineering problems, while tracking interaction metrics for analysis.",
+  "requestFramePermissions": []
+}

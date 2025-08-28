@@ -1,0 +1,83 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum SessionStatus {
+  ACTIVE
+  COMPLETED
+  ABANDONED
+}
+
+model Session {
+  id                              String         @id @default(cuid())
+  sessionId                       String         @unique @map("session_id")
+  userId                          String?        @map("user_id")
+  startTime                       DateTime       @default(now()) @map("start_time")
+  endTime                         DateTime?      @map("end_time")
+  status                          SessionStatus  @default(ACTIVE)
+  countryOfOrigin                 String?        @map("country_of_origin")
+  userLocation                    String?        @map("user_location")
+  originalPrompt                  String?        @map("original_prompt")
+  aiRefinedPrompt                 String?        @map("ai_refined_prompt")
+  aiSolution                      String?        @map("ai_solution")
+  userSatisfaction                Int?           @map("user_satisfaction")
+  totalMessages                   Int            @default(0) @map("total_messages")
+  sessionDuration                 Int?           @map("session_duration")
+  aiInitiatedRefinements          Int            @default(0) @map("ai_initiated_refinements")
+  userInitiatedRefinements        Int            @default(0) @map("user_initiated_refinements")
+  satisfactionSurveyInteractions  Int            @default(0) @map("satisfaction_survey_interactions")
+  userEmotionalEngagementScore    String         @default("1") @map("user_emotional_engagement_score")
+  engagementRationale             String?        @map("engagement_rationale")
+  userIntelligenceScore           String         @default("1") @map("user_intelligence_score")
+  intelligenceRationale           String?        @map("intelligence_rationale")
+  keyTopics                       String[]       @map("key_topics")
+  skillAreas                      String[]       @map("skill_areas")
+  nextSteps                       String[]       @map("next_steps")
+  createdAt                       DateTime       @default(now()) @map("created_at")
+  updatedAt                       DateTime       @updatedAt @map("updated_at")
+
+  messages Message[]
+  user     User?     @relation(fields: [userId], references: [id])
+
+  @@map("sessions")
+}
+
+model Message {
+  id        String     @id @default(cuid())
+  sessionId String     @map("session_id")
+  role      MessageRole
+  content   String
+  timestamp DateTime   @default(now()) @map("timestamp")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  session Session @relation(fields: [sessionId], references: [sessionId], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  sessions Session[]
+
+  @@map("users")
+}
