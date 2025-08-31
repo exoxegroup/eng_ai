@@ -28,6 +28,10 @@ dist-ssr
 /memory-bank/STATUS.md
 /memory-bank/WORKFLOW.md
 
+/DEPLOYMENT_CHECKLIST.md
+/DEPLOYMENT_GUIDE.md
+/database-setup.sql
+
 /EMAIL_SETUP.md
 /database-schema.sql
 /error.txt
