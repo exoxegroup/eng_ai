@@ -35,3 +35,6 @@ dist-ssr
 /EMAIL_SETUP.md
 /database-schema.sql
 /error.txt
+/backend/test-email.js
+/backend/smtp-test.js
+/backend/smtp-test.cjs
