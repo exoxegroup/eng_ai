@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSessions } from '../src/hooks/useApi';
 import { SessionData } from '../types';
 import SearchIcon from './icons/SearchIcon';
 
@@ -20,8 +21,7 @@ const ProgressBar: React.FC<{ value: number }> = ({ value }) => (
 const ITEMS_PER_PAGE = 10;
 
 const AnalysisView: React.FC = () => {
-    const [sessions, setSessions] = useState<SessionData[]>([]);
-    const [filteredSessions, setFilteredSessions] = useState<SessionData[]>([]);
+    const { data: sessions = [], isLoading, error } = useSessions();
     const [selectedSession, setSelectedSession] = useState<SessionData | null>(null);
     const [selectedCountry, setSelectedCountry] = useState<string>('All');
     
@@ -29,89 +29,88 @@ const AnalysisView: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [currentPage, setCurrentPage] = useState<number>(1);
 
-
-    useEffect(() => {
-        const storedSessions = localStorage.getItem('eng-coach-sessions');
-        if (storedSessions) {
-            try {
-                const parsed = JSON.parse(storedSessions).map((s: any) => ({
-                    ...s,
-                    startTime: new Date(s.startTime),
-                    endTime: s.endTime ? new Date(s.endTime) : null,
-                })).sort((a: SessionData, b: SessionData) => b.startTime.getTime() - a.startTime.getTime());
-                setSessions(parsed);
-                if (parsed.length > 0) {
-                    setSelectedSession(parsed[0]);
-                }
-            } catch (error) {
-                console.error("Failed to parse sessions from localStorage", error);
-                setSessions([]);
-            }
+    const filteredSessions = useMemo(() => {
+        if (!sessions || !Array.isArray(sessions)) return [];
+        
+        let result = [...sessions];
+        
+        if (selectedCountry && selectedCountry !== 'All') {
+            result = result.filter(session => session.countryOfOrigin === selectedCountry);
         }
-    }, []);
-    
-    const countryData = useMemo(() => {
-        const dataByCountry: { [key: string]: { sessions: SessionData[] } } = {};
-        sessions.forEach(session => {
-            if (session.countryOfOrigin) {
-                const country = session.countryOfOrigin.trim();
-                if (!dataByCountry[country]) {
-                    dataByCountry[country] = { sessions: [] };
-                }
-                dataByCountry[country].sessions.push(session);
-            }
+        
+        if (searchTerm) {
+            result = result.filter(session => 
+                session.sessionId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (session.countryOfOrigin && session.countryOfOrigin.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                session.userSatisfaction?.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+        }
+        
+        return result.sort((a, b) => {
+            const dateA = a.startTime ? new Date(a.startTime).getTime() : 0;
+            const dateB = b.startTime ? new Date(b.startTime).getTime() : 0;
+            return dateB - dateA;
         });
+    }, [sessions, selectedCountry, searchTerm]);
 
-        return Object.entries(dataByCountry).map(([country, data]) => {
-            const total = data.sessions.length;
-            const satisfied = data.sessions.filter(s => s.userSatisfaction === 'Satisfied').length;
-            const engagement = calculateAverage(data.sessions.map(s => s.userEmotionalEngagementScore));
-            const intelligence = calculateAverage(data.sessions.map(s => s.userIntelligenceScore));
-            return {
-                country,
-                totalSessions: total,
-                satisfactionRate: total > 0 ? (satisfied / total) * 100 : 0,
-                avgEngagement: (engagement / 3) * 100,
-                avgIntelligence: (intelligence / 3) * 100,
-            };
-        }).sort((a, b) => b.totalSessions - a.totalSessions);
-    }, [sessions]);
-    
-
+    // Initialize selected session when data loads
     useEffect(() => {
-        let newFiltered = sessions;
-        if (selectedCountry !== 'All') {
-            newFiltered = sessions.filter(s => s.countryOfOrigin === selectedCountry);
-        }
-        setFilteredSessions(newFiltered);
-        setCurrentPage(1); // Reset page on filter change
-        if (newFiltered.length > 0 && (!selectedSession || selectedSession.countryOfOrigin !== selectedCountry && selectedCountry !== 'All')) {
-           setSelectedSession(newFiltered[0]);
-        } else if (newFiltered.length === 0) {
+        if (filteredSessions && filteredSessions.length > 0) {
+            if (!selectedSession || !filteredSessions.find(s => s.sessionId === selectedSession.sessionId)) {
+                setSelectedSession(filteredSessions[0]);
+            }
+        } else {
             setSelectedSession(null);
         }
-    }, [selectedCountry, sessions, selectedSession]);
+    }, [filteredSessions, selectedSession]);
+    
+    const countryData = useMemo(() => {
+        if (!sessions || sessions.length === 0) return [];
+        
+        const countryMap = new Map();
+        sessions.forEach(session => {
+            const country = session.countryOfOrigin || 'Unknown';
+            if (!countryMap.has(country)) {
+                countryMap.set(country, {
+                    country,
+                    totalSessions: 0,
+                    totalEngagement: 0,
+                    totalIntelligence: 0,
+                    totalSatisfaction: 0
+                });
+            }
+            
+            const data = countryMap.get(country);
+            data.totalSessions++;
+            data.totalEngagement += session.userEmotionalEngagementScore || 0;
+            data.totalIntelligence += session.userIntelligenceScore || 0;
+            data.totalSatisfaction += session.userSatisfaction === 'Satisfied' ? 1 : 0;
+        });
+
+        return Array.from(countryMap.values()).map(data => ({
+            ...data,
+            avgEngagement: Math.round(((data.totalEngagement || 0) / data.totalSessions) * 33.33),
+            avgIntelligence: Math.round(((data.totalIntelligence || 0) / data.totalSessions) * 33.33),
+            satisfactionRate: Math.round(((data.totalSatisfaction || 0) / data.totalSessions) * 100)
+        })).sort((a, b) => b.totalSessions - a.totalSessions);
+    }, [sessions]);
 
     const paginatedSessionsData = useMemo(() => {
-        const searchLower = searchTerm.toLowerCase();
-        
-        const sessionsAfterSearch = filteredSessions.filter(s =>
-            s.sessionId.toLowerCase().includes(searchLower) ||
-            (s.countryOfOrigin || '').toLowerCase().includes(searchLower) ||
-            s.userSatisfaction.toLowerCase().includes(searchLower)
-        );
+        if (!filteredSessions || !Array.isArray(filteredSessions)) {
+            return { items: [], totalItems: 0, totalPages: 1 };
+        }
 
-        const totalItems = sessionsAfterSearch.length;
-        const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+        const totalItems = filteredSessions.length;
+        const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
 
         const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
         const endIndex = startIndex + ITEMS_PER_PAGE;
         
-        const itemsForCurrentPage = sessionsAfterSearch.slice(startIndex, endIndex);
+        const itemsForCurrentPage = filteredSessions.slice(startIndex, endIndex);
 
         return { items: itemsForCurrentPage, totalItems, totalPages };
 
-    }, [filteredSessions, searchTerm, currentPage]);
+    }, [filteredSessions, currentPage]);
 
 
     // --- Calculated Metrics from filtered sessions ---
@@ -120,12 +119,62 @@ const AnalysisView: React.FC = () => {
     const intelligenceScores = filteredSessions.map(s => s.userIntelligenceScore);
     const satisfiedSessions = filteredSessions.filter(s => s.userSatisfaction === 'Satisfied').length;
     
-    const avgEngagement = (calculateAverage(engagementScores) / 3) * 100;
-    const avgIntelligence = (calculateAverage(intelligenceScores) / 3) * 100;
+    const avgEngagement = calculateAverage(engagementScores) * 33.33;
+    const avgIntelligence = calculateAverage(intelligenceScores) * 33.33;
     const satisfactionRate = totalSessions > 0 ? (satisfiedSessions / totalSessions) * 100 : 0;
     
-    const sessionDuration = (data: SessionData | null) => data && data.endTime ? ((data.endTime.getTime() - data.startTime.getTime()) / 1000 / 60).toFixed(2) : 'N/A';
+    const sessionDuration = (data: SessionData | null) => {
+        if (!data || !data.startTime || !data.endTime) return 'N/A';
+        try {
+            const start = new Date(data.startTime);
+            const end = new Date(data.endTime);
+            if (isNaN(start.getTime()) || isNaN(end.getTime())) return 'N/A';
+            const duration = (end.getTime() - start.getTime()) / 60000;
+            return Math.max(0, Math.round(duration)).toString();
+        } catch (error) {
+            return 'N/A';
+        }
+    };
 
+
+    // Handle loading, error, and empty states
+    if (isLoading) {
+        return (
+            <div className="p-8">
+                <div className="flex justify-center items-center h-64">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    <span className="ml-3 text-slate-600">Loading sessions...</span>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="p-8">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+                    <h2 className="text-xl font-semibold text-red-800 mb-2">Error Loading Sessions</h2>
+                    <p className="text-red-600">
+                        {(error as Error).message || 'Failed to load sessions from the server.'}
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!sessions || sessions.length === 0) {
+        return (
+            <div className="p-8">
+                <div className="text-center py-12">
+                    <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">No sessions recorded</h3>
+                    <p className="mt-1 text-sm text-gray-500">Get started by creating a new coaching session.</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="p-8 grid grid-cols-12 gap-8">
@@ -306,10 +355,10 @@ const AnalysisView: React.FC = () => {
                                                 <tr key={session.sessionId} className={selectedSession?.sessionId === session.sessionId ? 'bg-blue-50' : ''}>
                                                     <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-[var(--text-primary)] sm:pl-6">{session.sessionId}</td>
                                                     <td className="whitespace-nowrap px-3 py-4 text-sm text-[var(--text-secondary)]">{session.countryOfOrigin || 'N/A'}</td>
-                                                    <td className="whitespace-nowrap px-3 py-4 text-sm text-[var(--text-secondary)]">{session.startTime.toLocaleDateString()}</td>
+                                                    <td className="whitespace-nowrap px-3 py-4 text-sm text-[var(--text-secondary)]">{session.startTime ? new Date(session.startTime).toLocaleDateString() : 'N/A'}</td>
                                                     <td className="whitespace-nowrap px-3 py-4 text-sm text-[var(--text-secondary)]">{sessionDuration(session)}</td>
-                                                    <td className="whitespace-nowrap px-3 py-4 text-sm text-[var(--text-secondary)]"><ProgressBar value={(session.userEmotionalEngagementScore / 3) * 100} /></td>
-                                                    <td className="whitespace-nowrap px-3 py-4 text-sm text-[var(--text-secondary)]"><ProgressBar value={(session.userIntelligenceScore / 3) * 100} /></td>
+                                                    <td className="whitespace-nowrap px-3 py-4 text-sm text-[var(--text-secondary)]"><ProgressBar value={((session.userEmotionalEngagementScore || 0) / 3) * 100} /></td>
+                                                    <td className="whitespace-nowrap px-3 py-4 text-sm text-[var(--text-secondary)]"><ProgressBar value={((session.userIntelligenceScore || 0) / 3) * 100} /></td>
                                                     <td className="whitespace-nowrap px-3 py-4 text-sm text-[var(--text-secondary)]">
                                                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                                                             session.userSatisfaction === 'Satisfied' ? 'bg-green-100 text-green-800' :

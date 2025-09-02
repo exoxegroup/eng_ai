@@ -10,7 +10,7 @@ const SessionListItem: React.FC<{ session: SessionData; onSelect: () => void; }>
         <div>
             <p className="font-semibold text-blue-600">{session.sessionId}</p>
             <p className="text-sm text-slate-500">
-                {new Date(session.startTime).toLocaleString()}
+                {session.startTime ? new Date(session.startTime).toLocaleString() : 'N/A'}
             </p>
         </div>
         <div>
