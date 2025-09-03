@@ -34,7 +34,7 @@ app.use(compression());
 app.use(morgan('combined'));
 app.use(limiter);
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: process.env.CORS_ORIGIN || ['http://localhost:5173', 'https://engineering-aicoach.onrender.com'],
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
