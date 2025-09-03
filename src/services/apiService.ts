@@ -1,7 +1,9 @@
 import axios from 'axios';
+import { getApiConfig, logApiConfig } from '../config/debug';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 
-  (window.location.hostname === 'localhost' ? 'http://localhost:3001/api/v1' : 'https://engineering-ai-coach-backend.onrender.com/api/v1');
+// Log API configuration for debugging
+const apiConfig = logApiConfig();
+const API_BASE_URL = apiConfig.apiBaseUrl;
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
