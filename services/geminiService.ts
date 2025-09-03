@@ -2,11 +2,18 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { ChatMessage, ReportData } from '../types';
 import { SATISFACTION_QUESTION, AI_ENGINEERING_PROMPT_QUESTION } from '../constants';
 
-if (!process.env.GEMINI_API_KEY) {
-  throw new Error("GEMINI_API_KEY environment variable is not set.");
-}
+let ai: GoogleGenAI | null = null;
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const getAI = (): GoogleGenAI => {
+  if (!ai) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY environment variable is not set.");
+    }
+    ai = new GoogleGenAI({ apiKey });
+  }
+  return ai;
+};
 
 const getConversationHistoryText = (messages: ChatMessage[]): string => {
   return messages.map(m => `${m.sender === 'ai' ? 'AI Coach' : 'User'}: ${m.text}`).join('\n');
@@ -27,7 +34,7 @@ export const validateCountry = async (userInput: string): Promise<{ isValid: boo
   };
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
       model: "gemini-2.5-flash",
       contents: `Is "${userInput}" a valid country?`,
       config: {
@@ -78,7 +85,7 @@ Do not deviate from these rules. The user's latest message is the last one in th
 ${historyText}
 `;
 
-  return ai.models.generateContentStream({
+  return getAI().models.generateContentStream({
     model: 'gemini-2.5-flash',
     contents: contents,
     config: {
@@ -138,7 +145,7 @@ export const generateSessionReport = async (
     Analyze the transcript and output a valid JSON object matching the schema.
     `;
 
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
       model: "gemini-2.5-flash",
       contents: contents,
       config: {

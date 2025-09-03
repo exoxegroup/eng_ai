@@ -15,6 +15,21 @@ services:
         value: 10000
     healthCheckPath: /health
 
+  - type: web
+    name: engineering-ai-coach-frontend
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: GEMINI_API_KEY
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
 databases:
   - name: engineering-ai-coach-db
     databaseName: engineering_ai_coach
