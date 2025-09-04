@@ -18,7 +18,6 @@ router.get('/', (req, res) => {
 // Email service health check
 router.get('/email', async (req, res) => {
   try {
-    const EmailService = require('../services/EmailService').default;
     const emailHealthy = await EmailService.verifySmtpConnection();
     
     res.json({

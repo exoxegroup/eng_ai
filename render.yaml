@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: engineering-ai-coach-backend
+    name: ai-coach-backend
     env: node
     buildCommand: npm install && npm run build
     startCommand: npm start
@@ -9,14 +9,14 @@ services:
         value: production
       - key: DATABASE_URL
         fromDatabase:
-          name: engineering-ai-coach-db
+          name: ai-coach-db
           property: connectionString
       - key: PORT
         value: 10000
       - key: FRONTEND_URL
-        value: https://engineering-ai-coach-frontend.onrender.com
+        value: https://ai-coach-frontend.onrender.com
       - key: CORS_ORIGIN
-        value: https://engineering-ai-coach-frontend.onrender.com
+        value: https://ai-coach-frontend.onrender.com
       # Email Configuration - Update these with your actual values
       - key: SMTP_HOST
         value: smtp.mailtrap.io
@@ -29,9 +29,9 @@ services:
     healthCheckPath: /health
 
   - type: web
-    name: engineering-ai-coach-frontend
+    name: ai-coach-frontend
     env: static
-    buildCommand: npm install && VITE_API_URL=https://engineering-ai-coach-backend.onrender.com/api/v1 npm run build
+    buildCommand: npm install && VITE_API_URL=https://ai-coach-backend-rg8j.onrender.com/api/v1 npm run build
     staticPublishPath: dist
     envVars:
       - key: NODE_ENV
@@ -39,13 +39,15 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: VITE_API_URL
-        value: https://engineering-ai-coach-backend.onrender.com/api/v1
+        value: https://ai-coach-backend-rg8j.onrender.com/api/v1
+      - key: VITE_API_BASE_URL
+        value: https://ai-coach-backend-rg8j.onrender.com/api/v1
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
 
 databases:
-  - name: engineering-ai-coach-db
-    databaseName: engineering_ai_coach
+  - name: ai-coach-db
+    databaseName: ai_coach
     user: coach_user
