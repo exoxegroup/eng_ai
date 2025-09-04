@@ -26,6 +26,16 @@ export class OtpController {
         });
       }
 
+      // Check if email service is configured
+      const emailConfigured = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+      if (!emailConfigured) {
+        return res.status(503).json({
+          success: false,
+          message: 'Email service is not properly configured',
+          details: 'Contact administrator to configure email settings',
+        });
+      }
+
       // Generate 6-digit OTP
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       
@@ -37,9 +47,12 @@ export class OtpController {
       const emailSent = await EmailService.sendOtpEmail(email, otp);
 
       if (!emailSent) {
-        return res.status(500).json({
+        // Clean up stored OTP if email fails
+        otpStore.delete(email);
+        return res.status(503).json({
           success: false,
           message: 'Failed to send OTP email',
+          details: 'Email service is temporarily unavailable',
         });
       }
 
@@ -56,6 +69,7 @@ export class OtpController {
       return res.status(500).json({
         success: false,
         message: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error occurred',
       });
     }
   }
