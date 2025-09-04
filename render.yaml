@@ -14,9 +14,9 @@ services:
       - key: PORT
         value: 10000
       - key: FRONTEND_URL
-        value: https://ai-coach-frontend.onrender.com
+        value: https://engineering-aicoach.onrender.com
       - key: CORS_ORIGIN
-        value: https://ai-coach-frontend.onrender.com
+        value: https://engineering-aicoach.onrender.com
       # Email Configuration - Update these with your actual values
       - key: SMTP_HOST
         value: smtp.mailtrap.io
