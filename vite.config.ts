@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY || ''),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || ''),
-        'import.meta.env.VITE_API_URL': JSON.stringify(env.VITE_API_URL || 'https://engineering-ai-coach-backend.onrender.com/api/v1')
+        'import.meta.env.VITE_API_URL': JSON.stringify(env.VITE_API_URL || 'https://ai-coach-backend-rg8j.onrender.com/api/v1')
       },
       resolve: {
         alias: {

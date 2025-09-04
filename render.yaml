@@ -26,7 +26,7 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: VITE_API_URL
-        value: https://engineering-ai-coach-backend.onrender.com/api/v1
+        value: https://ai-coach-backend-rg8j.onrender.com/api/v1
     routes:
       - type: rewrite
         source: /*

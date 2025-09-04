@@ -15,7 +15,8 @@ export const getApiConfig = () => {
   } else if (config.isLocal) {
     config.apiBaseUrl = 'http://localhost:3001/api/v1';
   } else {
-    config.apiBaseUrl = 'https://engineering-ai-coach-backend.onrender.com/api/v1';
+    // Use the actual backend service URL from deployment
+    config.apiBaseUrl = 'https://ai-coach-backend-rg8j.onrender.com/api/v1';
   }
 
   return config;
